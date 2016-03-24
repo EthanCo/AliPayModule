@@ -19,6 +19,6 @@
 [支付宝支付Demo下载地址](http://aopsdkdownload.cn-hangzhou.alipay-pub.aliyun-inc.com/demo/WS_MOBILE_PAY_SDK_BASE.zip?spm=a219a.7629140.0.0.v4JXul&file=WS_MOBILE_PAY_SDK_BASE.zip)
 
 ###PID位置
-![PID](/PID.png)
+![PID](PID.png)
 
  
