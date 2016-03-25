@@ -36,10 +36,29 @@ public class AliPayDirector {
     private static final int SDK_PAY_FLAG = 1;
     private final Activity mActivity;
 
-    public AliPayDirector(Activity activity, onPayListener payListener) {
+    public AliPayDirector(Activity activity, onPaySuccessListener paySuccessListener, onPayFaildListener payFaildListener, onPayUnKnownListener payUnKnownListener) {
         this.mActivity = activity;
-        this.mPayListener = payListener;
+        this.mPaySuccessListener = paySuccessListener;
+        this.mPayFaildListener = payFaildListener;
+        this.mPayUnKownListener = payUnKnownListener;
+        initHandler(activity);
+    }
 
+    public AliPayDirector(Activity activity, onPaySuccessListener paySuccessListener, onPayFaildListener payFaildListener) {
+        this.mActivity = activity;
+        this.mPaySuccessListener = paySuccessListener;
+        this.mPayFaildListener = payFaildListener;
+        initHandler(activity);
+    }
+
+    public AliPayDirector(Activity activity, onPaySuccessListener paySuccessListener) {
+        this.mActivity = activity;
+        this.mPaySuccessListener = paySuccessListener;
+        initHandler(activity);
+    }
+
+    public AliPayDirector(Activity activity) {
+        this.mActivity = activity;
         initHandler(activity);
     }
 
@@ -60,15 +79,15 @@ public class AliPayDirector {
                         String resultStatus = payResult.getResultStatus();
                         // 判断resultStatus 为“9000”则代表支付成功，具体状态码代表含义可参考接口文档
                         if (TextUtils.equals(resultStatus, "9000")) {
-                            mPayListener.paySuccess(payResult);
+                            mPaySuccessListener.paySuccess(payResult);
                         } else {
                             // 判断resultStatus 为非"9000"则代表可能支付失败
                             // "8000"代表支付结果因为支付渠道原因或者系统原因还在等待支付结果确认，最终交易是否成功以服务端异步通知为准（小概率状态）
                             if (TextUtils.equals(resultStatus, "8000")) {
-                                mPayListener.payUnknown(payResult);
+                                mPayUnKownListener.payUnknown(payResult);
                             } else {
                                 // 其他值就可以判断为支付失败，包括用户主动取消支付，或者系统返回的错误
-                                mPayListener.payFailed(payResult);
+                                mPayFaildListener.payFailed(payResult);
                             }
                         }
                         break;
@@ -83,47 +102,45 @@ public class AliPayDirector {
     @SuppressLint("HandlerLeak")
     private Handler mHandler;
 
-    public interface onPayListener {
-        /**
-         * 支付失败
-         *
-         * @param payResult
-         */
+    /**
+     * 支付失败
+     */
+    public interface onPayFaildListener {
         void payFailed(PayResult payResult);
+    }
 
-        /**
-         * 支付结果确认中
-         *
-         * @param payResult
-         */
+    /**
+     * 支付结果确认中
+     */
+    public interface onPayUnKnownListener {
         void payUnknown(PayResult payResult);
+    }
 
-        /**
-         * 支付成功
-         *
-         * @param payResult
-         */
+    /**
+     * 支付成功
+     */
+    public interface onPaySuccessListener {
         void paySuccess(PayResult payResult);
     }
 
-    public void setPayListener(onPayListener mPayListener) {
-        this.mPayListener = mPayListener;
-    }
-
-    public onPayListener mPayListener = new onPayListener() {
+    private onPayFaildListener mPayFaildListener = new onPayFaildListener() {
         @Override
         public void payFailed(PayResult payResult) {
-
+            Toast.makeText(mActivity, "支付失败", Toast.LENGTH_SHORT).show();
         }
+    };
 
+    private onPayUnKnownListener mPayUnKownListener = new onPayUnKnownListener() {
         @Override
         public void payUnknown(PayResult payResult) {
-
+            //do nothing
         }
+    };
 
+    private onPaySuccessListener mPaySuccessListener = new onPaySuccessListener() {
         @Override
         public void paySuccess(PayResult payResult) {
-
+            Toast.makeText(mActivity, "支付成功", Toast.LENGTH_SHORT).show();
         }
     };
 
@@ -135,7 +152,7 @@ public class AliPayDirector {
      * @param price    价格 比如 0.01
      */
     public void pay(String name, String describe, String price) {
-        pay(name, describe, price, getOutTradeNo());
+        pay(name, describe, price, getOutTradeNo(), "http://notify.msp.hk/notify.htm");
     }
 
 
@@ -147,7 +164,7 @@ public class AliPayDirector {
      * @param price      价格 比如 0.01
      * @param outTradeNo 订单号
      */
-    public void pay(String name, String describe, String price, String outTradeNo) {
+    public void pay(String name, String describe, String price, String outTradeNo, String nofityUrl) {
         if (TextUtils.isEmpty(PARTNER) || TextUtils.isEmpty(RSA_PRIVATE) || TextUtils.isEmpty(SELLER)) {
             new AlertDialog.Builder(mActivity).setTitle("警告").setMessage("需要配置PARTNER | RSA_PRIVATE| SELLER")
                     .setPositiveButton("确定", new DialogInterface.OnClickListener() {
@@ -157,7 +174,7 @@ public class AliPayDirector {
                     }).show();
             return;
         }
-        String orderInfo = getOrderInfo(name, describe, price, outTradeNo);
+        String orderInfo = getOrderInfo(name, describe, price, outTradeNo, nofityUrl);
 
         /**
          * 特别注意，这里的签名逻辑需要放在服务端，切勿将私钥泄露在代码中！
@@ -214,9 +231,10 @@ public class AliPayDirector {
      * @param body
      * @param price
      * @param outTradeNo 订单号
+     * @param nofityUrl  服务器异步通知页面路径
      * @return
      */
-    private String getOrderInfo(String subject, String body, String price, String outTradeNo) {
+    private String getOrderInfo(String subject, String body, String price, String outTradeNo, String nofityUrl) {
 
         // 签约合作者身份ID
         String orderInfo = "partner=" + "\"" + PARTNER + "\"";
@@ -237,7 +255,7 @@ public class AliPayDirector {
         orderInfo += "&total_fee=" + "\"" + price + "\"";
 
         // 服务器异步通知页面路径
-        orderInfo += "&notify_url=" + "\"" + "http://notify.msp.hk/notify.htm" + "\"";
+        orderInfo += "&notify_url=" + "\"" + nofityUrl + "\"";
 
         // 服务接口名称， 固定值
         orderInfo += "&service=\"mobile.securitypay.pay\"";

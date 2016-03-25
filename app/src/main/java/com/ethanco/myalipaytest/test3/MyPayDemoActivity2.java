@@ -20,20 +20,20 @@ public class MyPayDemoActivity2 extends AppCompatActivity implements View.OnClic
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pay);
         findViewById(R.id.btnPay).setOnClickListener(this);
-        alipay = new AliPayDirector(this, new AliPayDirector.onPayListener() {
-            @Override
-            public void payFailed(PayResult payResult) {
-                Toast.makeText(MyPayDemoActivity2.this, "支付失败", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void payUnknown(PayResult payResult) {
-                Toast.makeText(MyPayDemoActivity2.this, "支付结果确认中", Toast.LENGTH_SHORT).show();
-            }
-
+        alipay = new AliPayDirector(this, new AliPayDirector.onPaySuccessListener() {
             @Override
             public void paySuccess(PayResult payResult) {
-                Toast.makeText(MyPayDemoActivity2.this, "支付成功", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MyPayDemoActivity2.this, "支付成功 !", Toast.LENGTH_SHORT).show();
+            }
+        }, new AliPayDirector.onPayFaildListener() {
+            @Override
+            public void payFailed(PayResult payResult) {
+                Toast.makeText(MyPayDemoActivity2.this, "支付失败...", Toast.LENGTH_SHORT).show();
+            }
+        }, new AliPayDirector.onPayUnKnownListener() {
+            @Override
+            public void payUnknown(PayResult payResult) {
+                Toast.makeText(MyPayDemoActivity2.this, "支付结果确认中...", Toast.LENGTH_SHORT).show();
             }
         });
     }
